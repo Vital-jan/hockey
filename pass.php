@@ -7,7 +7,7 @@
     'dy'=>$_POST["dy"],
     'width'=>$_POST['width'],
     'player1'=>1,
-    'player2'=>1,
+    'player2'=>2,
   ];
   $file_save = file_put_contents('game.json', json_encode($json));
   $response = [

@@ -22,6 +22,23 @@
   const requestInterval = 500; // частота запросов к серверу в мс
   const timeout = 20000; // таймаут в мс
 
+  const begin = () => {
+    fetch('begin.php', {
+        method: "POST",
+      }) 
+      .then(function(response){
+        if (response.status == 200) {}// удачный ajax запрос
+        else {}// неудачный ajax запрос
+        return response.json();
+      })
+      .then(function(response) {
+        console.log('begin: ',response);
+      })
+      .catch(function(error) {
+          alert('fetch error!' + error)
+      });
+  };
+
   const pass = () => { // передача мяча на другое поле
     let data = new FormData;
     data.append('player', player);
@@ -91,9 +108,11 @@
   const ballReset = () => {
     ball.x = Math.round(scr.width / 2 - ball.radius);
     ball.y = Math.round(scr.height / 8 - ball.radius);
-    ball.dy = -1;
+    ball.dy = -0;
     ball.dx = 0;
   };  
+
+  begin();
 
   let scr = {
     borderWidth: 0,
