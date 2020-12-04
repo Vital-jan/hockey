@@ -1,0 +1,40 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: gray;
+}
+
+.border {
+  position: fixed;
+  background-color: #d4cfcf;
+}
+
+.border.left {
+  left: 0;
+  height: 100%;
+  width: 5%;
+}
+
+.border.right {
+  right: 0;
+  height: 100%;
+  width: 5%;
+}
+
+.border.bottom {
+  bottom: 0;
+  height: 5%;
+  width: 100%;
+}
+
+.ball {
+  border-radius: 50%;
+  width: 3%;
+  height: 3%;
+  background-color: green;
+  position: absolute;
+}
+/*# sourceMappingURL=styles.css.map */

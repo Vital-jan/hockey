@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0 maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="cache-control" content="no-cache">
+<meta name="description" content="">
+<meta name="author" content="Vitalii Kolomiiets, Kyiv, Ukraine, vitaljan@gmail.com">
+<title></title>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="border left"></div>
+  <div class="border right"></div>
+  <div class="border bottom"></div>
+  <div class="ball"></div>
+</body>
+<script>
+  const requestInterval = 500; // частота запросов к серверу в мс
+  const timeout = 20000; // таймаут в мс
+
+  const pass = () => { // передача мяча на другое поле
+    let data = new FormData;
+    data.append('player', player);
+    data.append('dx', ball.dx);
+    data.append('dy', ball.dy);
+    data.append('x', ball.x);
+    data.append('width', scr.width);
+
+    fetch('pass.php', {
+      method: "POST",
+      body: data
+    }) 
+      .then(function(response){
+          if (response.status == 200) {}// удачный ajax запрос
+           else {}// неудачный ajax запрос
+          return response.json();
+      })
+      .then(function(response){
+        console.log('pass: ', response);
+      })
+      .catch(function(error) {
+        alert('fetch error!' + error)
+      });
+    };
+    
+    const wait = () => {
+      fetch('wait.php', {
+        method: "POST",
+      }) 
+      .then(function(response){
+        if (response.status == 200) {}// удачный ajax запрос
+        else {}// неудачный ajax запрос
+        return response.json();
+      })
+      .then(function(response) {
+        console.log('wait... player: ',response.player);
+        if (response.player == player) {
+          console.log('new player')
+          ball.dy = -response.dy;
+          ball.dx = +response.dx;
+          ball.y = -ball.radius;
+          ball.x = +response.x;
+          console.log(response.width)
+          
+          // - добавить пересчет координат x пропорционально
+          
+          active = true;
+        }
+      })
+      .catch(function(error) {
+          alert('fetch error!' + error)
+      });
+  };
+
+  const setSizes = ()=>{ // размеры поля, мяча, ракетки
+    scr.borderWidth = Math.round(window.innerWidth * 0.03);
+    scr.width = window.innerWidth;
+    scr.height = window.innerHeight;
+    document.querySelector('.border.left').style.width = scr.borderWidth + 'px';
+    document.querySelector('.border.right').style.width = scr.borderWidth + 'px';
+    document.querySelector('.border.bottom').style.height = scr.borderWidth + 'px';
+    ball.radius = Math.round(window.innerWidth * 0.03);
+    document.querySelector('.ball').style.width = 2 * ball.radius + 'px';
+    document.querySelector('.ball').style.height = 2 * ball.radius + 'px';
+  };
+
+  const ballReset = () => {
+    ball.x = Math.round(scr.width / 2 - ball.radius);
+    ball.y = Math.round(scr.height / 8 - ball.radius);
+    ball.dy = -1;
+    ball.dx = 0;
+  };  
+
+  let scr = {
+    borderWidth: 0,
+    width: 0,
+    height: 0
+  };  
+
+  let ball = {
+    x: 0,
+    y: 10,
+    dx: 0,
+    dy: -1,
+    radius: 20,
+    elem: document.querySelector('.ball')
+  };  
+  
+  let player = 1; // номер игрока (1 или 2)
+  let active = true;
+  let waitTime; // время ожидания ответа сервера
+  let sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
+  setSizes();
+  ballReset();
+
+  let activeInterval = setInterval(()=>{
+    if (!active) return;
+    ball.elem.style.left = ball.x + 'px';
+    ball.elem.style.top = ball.y + 'px';
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+
+    if (ball.y >= scr.height - 2 * ball.radius - scr.borderWidth) ball.dy = -ball.dy; // мяч коснулся низа
+
+    if (ball.y <= -ball.radius) { // мяч наполовину ушел за пределы поля
+      // отправка дынных на сервер
+      if (!sendRequest) {
+        sendRequest = true;
+        pass();
+      }
+    };
+
+    if (ball.y <= -ball.radius * 2) {// мяч полностью ушел за пределы поля
+      active = false; // стоп движение мяча
+      sendRequest = false;
+    };
+  }, 10);
+    
+  let passiveInterval = setInterval(()=>{
+    if (active) {
+      waitTime = 0;
+      return;
+    };
+    wait();
+    waitTime += requestInterval;
+    if (waitTime >= timeout) {
+      clearInterval(passiveInterval);
+      console.log('Timeout ---------------');
+    }
+  }, requestInterval);
+</script>
+</html>
