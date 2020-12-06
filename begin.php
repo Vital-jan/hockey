@@ -1,8 +1,4 @@
 <?
-  // $file = fopen("game.json", "r", );
-  // $json = json_decode(file_get_contents("game.json"), true);
-  // echo $json["game_id"];
-  // var_dump($json);
 
   $file_read = file_get_contents('game.json');
 
@@ -16,15 +12,17 @@
   if ($json['player1'] == 1 && $json['player2'] == 0 ) 
     { // зарегистрирован 1 игрок. 
       $json['player1'] = 1;
-      $json['player2'] = 2;
+      $json['player2'] = 1;
+      $json['player'] = 2; // текущий игрок будет вторым
       file_put_contents('game.json', json_encode($json));
       exit (json_encode(['player'=> 2]));
     }
     // зарегистрированы оба игрока или любое другое значение
     $json['player1'] = 1;
     $json['player2'] = 0;
+    $json['player'] = 1; // текущий игрок будет первым
     $save = file_put_contents('game.json', json_encode($json));
-    exit (json_encode(['player'=> 1, 'save'=>$save, $json]));
+    exit (json_encode(['player'=> 1]));
 ?>
 <!-- if(is_readable($path))
     echo 'Есть права на чтение.';
