@@ -1,23 +1,28 @@
 <?
-
-  $file_read = file_get_contents('game.json');
-
-  if (!$file_read) {
-    $response = ["error"=>'unable to read file'];
-    exit ($response);
+// start game. login player 1 or 2.
+  if (file_exists('game.json')) {$json = json_decode(file_get_contents('game.json'), true);}
+  else {
+    $json = [
+      "game_id"=>0,
+      "player"=>1,
+      "x"=>"0",
+      "dx"=>"0",
+      "dy"=>"0",
+      "width"=>"0",
+      "player1"=>1,
+      "player2"=>0
+    ];
   }
-  
-  $json = json_decode($file_read, true);
 
   if ($json['player1'] == 1 && $json['player2'] == 0 ) 
-    { // зарегистрирован 1 игрок. 
+    { // если залогинен только инрок 1
       $json['player1'] = 1;
       $json['player2'] = 1;
-      $json['player'] = 2; // текущий игрок будет вторым
+      $json['player'] = 2; // текущий игрок будет №2
       file_put_contents('game.json', json_encode($json));
       exit (json_encode(['player'=> 2]));
     }
-    // зарегистрированы оба игрока или любое другое значение
+    // если залогинены оба игрока
     $json['player1'] = 1;
     $json['player2'] = 0;
     $json['player'] = 1; // текущий игрок будет первым

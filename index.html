@@ -23,37 +23,6 @@
   const requestInterval = 500; // частота запросов к серверу в мс
   const timeout = 20000; // таймаут в мс
 
-  const begin = () => {
-    setSizes(); // уст. размеры объектов
-    
-    fetch('begin.php', {
-      method: "POST",
-    }) 
-    .then(function(response){
-      if (response.status == 200) {}// удачный ajax запрос
-      else {}// неудачный ajax запрос
-      return response.json();
-    })
-    .then(function(response) {
-      game.currentPlayer = 1;
-      game.player = response.player;
-      console.log('i am player: ', game.player);
-      if (game.player == 1) {
-        ball.x = Math.round(scr.width / 2 - ball.radius);
-        ball.y = Math.round(scr.height / 8 - ball.radius);
-        ball.dy = 0;
-        ball.dx = 0;
-        console.log('waiting to 2-nd player connect.....')
-      } else {
-          game.player2Login = true;
-          // ball.elem.style.display = "none";
-        }
-      })
-      .catch(function(error) {
-          alert('begin error!' + error)
-      });
-  };
-
   const pass = () => { // передача мяча на другое поле
     let data = new FormData;
     data.append('player', game.currentPlayer);
@@ -120,6 +89,17 @@
     document.querySelector('.ball').style.height = 2 * ball.radius + 'px';
   };
 
+  const reset = () => {
+    ball.x = Math.round(scr.width / 2 - ball.radius);
+    ball.y = Math.round(scr.height / 8 - ball.radius);
+    ball.dy = 1;
+    ball.dx = 0;
+    ball.elem.style.display = 'block';
+    ball.elem.style.left = ball.x + 'px';
+    ball.elem.style.top = ball.y + 'px';
+    game.active = true;
+  };
+
   let scr = {
     borderWidth: 0,
     width: 0,
@@ -144,23 +124,72 @@
     player2Login: false
   }
 
+  
   let waitTime; // счетчик времени ожидания ответа сервера
   let sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
+  
+  // начало игры ===============================================
 
-  begin();
+  setSizes(); // уст. размеры объектов
+  ball.elem.style.display = 'none';
+  
+  fetch('begin.php', { // check to login 1 or 2 player
+    method: "POST",
+  }) 
+  .then(function(response){
+    if (response.status == 200) {}// удачный ajax запрос
+    else {}// неудачный ajax запрос
+    return response.json();
+  })
+  .then(function(json) {
+    game.currentPlayer = 1;
+    game.player = json.player;
+    console.log('i am player: ', game.player);
 
+    let player2Waiting = setInterval (() => { // wait to player 2 connect
+      console.log('waiting to 2-nd player connect.....')
+      fetch('wait2player.php', { // check to login 1 or 2 player
+        method: "POST",
+      })
+      .then((response)=>{return response.json()})
+      .then((response)=>{
+        if (response.player2) {
+          clearInterval(player2Waiting);
+          console.log('player 2 logged in. start game.')
+          start();
+        };
+      })
+      .catch (()=>{alert('wait2player.php error' + error)})
+
+    }, requestInterval);
+
+    })
+    .catch(function(error) {
+        alert('begin.php error!' + error)
+    });
+
+const start = () => {
+  if (game.player == game.currentPlayer) reset();
+return;
   let activeInterval = setInterval(()=>{
-    if (!game.player2Login) return;
     if (!game.active) return;
     ball.x += ball.dx;
     ball.y += ball.dy;
+    
+    if (ball.y >= scr.height - 2 * ball.radius - scr.borderWidth) { // мяч коснулся низа
+      ball.dy = -ball.dy;
+      ball.y = scr.height - 2 * ball.radius - 1;
+    }
+    if (ball.x >= scr.width - 2 * ball.radius - scr.borderWidth) { // мяч коснулся низа
+      ball.dx = -ball.dx;
+      ball.x = scr.width - 2 * ball.radius - 1;
+    }
+    
     ball.elem.style.left = ball.x + 'px';
     ball.elem.style.top = ball.y + 'px';
 
-    if (ball.y >= scr.height - 2 * ball.radius - scr.borderWidth) ball.dy = -ball.dy; // мяч коснулся низа
-
     if (ball.y <= -ball.radius) { // мяч наполовину ушел за пределы поля
-      // отправка дынных на сервер
+      // отправка данных на сервер
       if (!sendRequest) {
         sendRequest = true;
         pass();
@@ -174,10 +203,6 @@
   }, 10);
     
   let passiveInterval = setInterval(()=>{
-    if (!game.player2Login) {
-      console.log('waiting for player 2 connect ...');
-      return;
-    }
     if (game.active) {
       waitTime = 0;
       return;
@@ -189,5 +214,6 @@
       console.log('Timeout ---------------');
     }
   }, requestInterval);
+};
 </script>
 </html>
