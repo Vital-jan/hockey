@@ -12,7 +12,7 @@
   $file_save = file_put_contents('game.json', json_encode($json));
   $response = [
     "file"=> $file_save,
-    'player'=> 3 - $_POST["player"] * 1,
+    'player'=> 3 - (int)$_POST["player"],
     'x'=> $_POST["x"],
     'dx'=> $_POST["dx"],
     'dy'=> $_POST["dy"],
