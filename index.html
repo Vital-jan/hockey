@@ -23,8 +23,10 @@
 </body>
 <script>
 
+  const gameInterval = 50; // интервал игры 
   const requestInterval = 500; // частота запросов к серверу в мс
-  const timeout = 20000; // таймаут в мс
+  const timeout = 20000; // таймаут окончания игры в мс
+  const maxSpeed = 50; // ограничение скорости удара (px/gameInterval)
 
   const pass = () => { // передача мяча на другое поле
     let data = new FormData;
@@ -65,11 +67,12 @@
     document.querySelector('.border.right').style.width = scr.borderWidth + 'px';
     document.querySelector('.border.bottom').style.height = scr.borderWidth + 'px';
     ball.radius = Math.round(window.innerWidth * 0.03);
+    bit.radius = ball.radius * 1.1;
     document.body.style.backgroundPosition = `${scr.borderWidth}px 0;`;
     ball.elem.style.width = 2 * ball.radius + 'px';
     ball.elem.style.height = 2 * ball.radius + 'px';
-    bit.elem.style.width = 2 * ball.radius + 'px'
-    bit.elem.style.height = 2 * ball.radius + 'px'
+    bit.elem.style.width = 2 * bit.radius + 'px'
+    bit.elem.style.height = 2 * bit.radius + 'px'
   };
 
   const reset = () => {
@@ -92,7 +95,7 @@
   let bit = {
     x: 0,
     y: 0,
-    radius: 20,
+    radius: 40,
     elem: document.querySelector('.bit')
   };
 
@@ -100,8 +103,13 @@
     down: false,
     x: 0,
     y: 0,
-    oldX: 0,
-    oldY: 0
+    // oldX: 0,
+    // oldY: 0,
+    v: 0, // скорость мышки в px/gameInterval (скаляр)
+    lastTimeX: 0, // координаты мыши в прошлый период игрового интервала
+    lastTimeY: 0,
+    dx: 0, // вектор скорости мыши в px
+    dy: 0
   }
 
   let ball = {
@@ -126,8 +134,8 @@
     event.preventDefault();
     event.stopPropagation();
       mouse.down = true;
-      mouse.oldX = event.pageX;
-      mouse.oldY = event.pageY;
+      // mouse.oldX = event.pageX;
+      // mouse.oldY = event.pageY;
   });
 
   window.addEventListener('mouseup', (event)=>{
@@ -135,23 +143,24 @@
   });
 
   window.addEventListener('mousemove', (event)=>{
+    mouse.x = event.pageX;
+    mouse.y = event.pageY;
     if (mouse.down) {
-      let dx = event.pageX - mouse.oldX;
-      let dy = event.pageY - mouse.oldY;
-      mouse.oldX = event.pageX;
-      mouse.oldY = event.pageY;
-      bit.x += dx;
-      bit.y += dy;
+      // let dx = event.pageX - mouse.oldX;
+      // let dy = event.pageY - mouse.oldY;
+      // mouse.oldX = event.pageX;
+      // mouse.oldY = event.pageY;
+      return;
+      bit.x += mouse.dx;
+      bit.y += mouse.dy;
+      // проверка выхода биты за поле
       bit.y = bit.y < -5 ? -5 : bit.y;
       bit.y = bit.y > scr.height - scr.borderWidth - 2*ball.radius ? scr.height - scr.borderWidth - 2*ball.radius : bit.y;
       bit.x = bit.x < scr.borderWidth ? scr.borderWidth : bit.x;
       bit.x = bit.x > scr.width - scr.borderWidth - 2*ball.radius ? scr.width -scr.borderWidth - 2*ball.radius : bit.x;
-          // проверка выхода биты за пределы поля
-          //...................
+      // перемещение биты
       bit.elem.style.left = bit.x + 'px';
       bit.elem.style.top = bit.y + 'px';
-      // удар
-      //.........
     }
   });
 
@@ -202,7 +211,32 @@
 const start = () => {
   if (game.player == game.currentPlayer) reset();
 
-  let activeInterval = setInterval(()=>{ // ball moving 
+  // мяч на своем поле. основной цикл игры. =====================================
+  // ============================================================================
+  let activeInterval = setInterval(()=>{ // игровой интервал
+    // вычисляем вектор скорости мыши в игровом интервале
+    mouse.dx = mouse.x - mouse.lastTimeX;
+    mouse.dy = mouse.y - mouse.lastTimeY;
+    // вычисляем скаляр скорости движения мыши
+    mouse.v = Math.pow( Math.pow(mouse.dx, 2) + Math.pow(mouse.dy, 2), 0.5);
+    // запоминаем предыдущее положение мыши для вычислений в следующей итерации игрового интервала
+    mouse.lastTimeX = mouse.x;
+    mouse.lastTimeY = mouse.y;
+
+    if (mouse.down) { // если удерживается кнопка мыши:
+      // перемещение биты:
+      bit.x += mouse.dx;
+      bit.y += mouse.dy;
+      // проверка выхода биты за поле
+      bit.y = bit.y < -5 ? -5 : bit.y;
+      bit.y = bit.y > scr.height - scr.borderWidth - 2*ball.radius ? scr.height - scr.borderWidth - 2*ball.radius : bit.y;
+      bit.x = bit.x < scr.borderWidth ? scr.borderWidth : bit.x;
+      bit.x = bit.x > scr.width - scr.borderWidth - 2*ball.radius ? scr.width -scr.borderWidth - 2*ball.radius : bit.x;
+      // визуализация перемещения биты
+      bit.elem.style.left = bit.x + 'px';
+      bit.elem.style.top = bit.y + 'px';
+    }
+
     if (!game.active) return;
     ball.x += ball.dx;
     ball.y += ball.dy;
@@ -220,28 +254,28 @@ const start = () => {
       ball.x = 2 * ball.radius - scr.borderWidth + 1;
     }
     
-    // перемещаем мяч
-    ball.elem.style.left = ball.x + 'px';
-    ball.elem.style.top = ball.y + 'px';
-
-    // проверяем дистанцию мяч-бита
-    let distanceX = Math.abs((ball.x + ball.radius) - (bit.x + bit.radius));
-    let distanceY = Math.abs((ball.y + ball.radius) - (bit.y + bit.radius));
-    if (distanceX <= (ball.radius + bit.radius) && distanceY <= (ball.radius + bit.radius)) {
+    // контакт биты с мячом:
+    console.log(bit.radius, ball.radius)
+    let distance = Math.pow(Math.pow(ball.x - bit.x, 2) + Math.pow(ball.y - bit.y, 2), 0.5);
+    if (distance <= (ball.radius + bit.radius)) {
       if (mouse.down) {
         console.log('KNOCK=============================')
-        console.log(mouse.x - mouse.oldX)
-        // ball.dx += mouse.x - mouse.oldX;
-        // ball.dy += mouse.y - mouse.oldY;
+        console.log(mouse.v)
       } else {
         console.log('Knock----------')
       }
     }
-// отбиваем мяч от верха
+
+    // визуализируем перемещение мяча
+    ball.elem.style.left = ball.x + 'px';
+    ball.elem.style.top = ball.y + 'px';
+
+    // отбиваем мяч от верха (временно):
     if (ball.y <= 10) {ball.dy = -ball.dy; ball.dx=-ball.dx;}
     return;
-
+    
     if (ball.y <= -ball.radius) { // мяч наполовину ушел за пределы поля
+  
       // отправка данных на сервер
       if (!sendRequest) {
         sendRequest = true;
@@ -253,9 +287,10 @@ const start = () => {
       game.active = false; // стоп движение мяча
       sendRequest = false;
     };
-  }, 10); // activeInterval
+  }, gameInterval); // activeInterval
     
-  let passiveInterval = setInterval(()=>{ // мяч на другом поле
+  // =================================================================
+  let passiveInterval = setInterval(()=>{ // мяч на поле соперника
     if (game.active) {
       waitTime = 0;
       return;
