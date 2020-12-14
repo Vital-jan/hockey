@@ -163,13 +163,13 @@
       bit.elem.style.top = bit.y + 'px';
     }
   });
-
+  
+  // начало игры ===============================================
   
   let waitTime; // счетчик времени ожидания ответа сервера
   let sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
+  let knock = false; // произошло столкновение мяча с битой
   
-  // начало игры ===============================================
-
   setSizes(); // уст. размеры объектов
   ball.elem.style.display = 'none';
   
@@ -255,23 +255,30 @@ const start = () => {
     }
     
     // контакт биты с мячом:
-    console.log(bit.radius, ball.radius)
-    let distance = Math.pow(Math.pow(ball.x - bit.x, 2) + Math.pow(ball.y - bit.y, 2), 0.5);
-    if (distance <= (ball.radius + bit.radius)) {
+    let distX = ball.x - bit.x;
+    let distY = ball.y - bit.y;
+    let distance = Math.pow(distX * distX + distY*distY, 0.5);
+    if (distance > (ball.radius + bit.radius)) knock = false;
+    if ((distance <= (ball.radius + bit.radius)) && knock===false) {
+      knock = true; // соприкосновение (наложение) мяча и биты
       if (mouse.down) {
-        console.log('KNOCK=============================')
-        console.log(mouse.v)
+        let angle = Math.abs(Math.atan(distY / distX));
+        let ballV = Math.pow(ball.dx * ball.dx + ball.dy * ball.dy, 0.5);
+        let dx = Math.cos(angle) * ballV * Math.sign(distX);
+        let dy = Math.sin(angle) * ballV * Math.sign(distY);
+        ball.dx = dx;
+        ball.dy = dy;
       } else {
-        console.log('Knock----------')
+        console.log('Knock mouse up----------')
       }
-    }
+    };
 
     // визуализируем перемещение мяча
     ball.elem.style.left = ball.x + 'px';
     ball.elem.style.top = ball.y + 'px';
 
     // отбиваем мяч от верха (временно):
-    if (ball.y <= 10) {ball.dy = -ball.dy; ball.dx=-ball.dx;}
+    if (ball.y <= 10) {ball.dy = -ball.dy;}
     return;
     
     if (ball.y <= -ball.radius) { // мяч наполовину ушел за пределы поля
