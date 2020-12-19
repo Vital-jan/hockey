@@ -17,6 +17,11 @@
     <div class="border left"></div>
     <div class="border right"></div>
     <div class="border bottom"></div>
+    <div class="border bottom-left"></div>
+    <div class="border bottom-right"></div>
+    <div class="gate"></div>
+    <div class="gate-left"></div>
+    <div class="gate-right"></div>
     <div class="ball"></div>
     <div class="bit"></div>
   </div>
@@ -61,12 +66,27 @@
     scr.width = min;
     scr.height = min;
     document.querySelector('.field').style.width = min + 'px';
-    document.querySelector('.field').style.height = min + 'px';
+    document.querySelector('.field').style.height = min - scr.borderWidth + 'px';
     document.querySelector('.border.left').style.width = scr.borderWidth + 'px';
-    document.querySelector('.border.left').style.height = '100%';
-    document.querySelector('.border.right').style.height = '100%';
+    document.querySelector('.border.left').style.height = scr.height - scr.borderWidth + 'px';
+    document.querySelector('.border.right').style.height = scr.height - scr.borderWidth + 'px';
     document.querySelector('.border.right').style.width = scr.borderWidth + 'px';
     document.querySelector('.border.bottom').style.height = scr.borderWidth + 'px';
+    document.querySelector('.border.bottom').style.width = scr.width - 2*scr.borderWidth + 'px';
+    document.querySelector('.border.bottom').style.left = scr.borderWidth + 'px';
+    document.querySelector('.border.bottom').style.bottom = -scr.borderWidth + 'px';
+    document.querySelector('.border.bottom-left').style.bottom = -scr.borderWidth + 'px';
+    document.querySelector('.border.bottom-right').style.bottom = -scr.borderWidth + 'px';
+    document.querySelector('.border.bottom-left').style.width = scr.borderWidth + 'px';
+    document.querySelector('.border.bottom-left').style.height = scr.borderWidth + 'px';
+    document.querySelector('.border.bottom-left').style.borderRadius = `0 0 0 ${scr.borderWidth}px`;
+    document.querySelector('.border.bottom-left').style.borderBottomWidth = `${scr.borderWidth}px`;
+    document.querySelector('.border.bottom-left').style.borderLeftWidth = `${scr.borderWidth}px`;
+    document.querySelector('.border.bottom-right').style.width = scr.borderWidth + 'px';
+    document.querySelector('.border.bottom-right').style.height = scr.borderWidth + 'px';
+    document.querySelector('.border.bottom-right').style.borderRadius = `0 0 ${scr.borderWidth}px 0`;
+    document.querySelector('.border.bottom-right').style.borderBottomWidth = `${scr.borderWidth}px`;
+    document.querySelector('.border.bottom-right').style.borderRightWidth = `${scr.borderWidth}px`;
     ball.radius = Math.round(window.innerWidth * 0.03);
     bit.radius = ball.radius * 1.1;
     document.body.style.backgroundPosition = `${scr.borderWidth}px 0;`;
@@ -74,9 +94,31 @@
     ball.elem.style.height = 2 * ball.radius + 'px';
     bit.elem.style.width = 2 * bit.radius + 'px'
     bit.elem.style.height = 2 * bit.radius + 'px'
+
+    gate.width = ball.radius * 6;
+    gate.left = scr.width / 2 - gate.width / 2;
+    document.querySelector('.gate').style.height = scr.borderWidth + 'px';
+    document.querySelector('.gate').style.width = gate.width + 2*scr.borderWidth + 'px';
+    document.querySelector('.gate').style.bottom = -scr.borderWidth + 'px';
+    document.querySelector('.gate').style.left = gate.left - scr.borderWidth + 'px';
+    document.querySelector('.gate-left').style.left = gate.left - scr.borderWidth + 'px';
+    document.querySelector('.gate-left').style.height = scr.borderWidth + 'px';
+    document.querySelector('.gate-left').style.width = scr.borderWidth + 'px';
+    document.querySelector('.gate-left').style.bottom = -scr.borderWidth + 'px';
+    document.querySelector('.gate-left').style.borderRadius = `0 ${scr.borderWidth}px 0 0`;
+    document.querySelector('.gate-right').style.left = gate.left + gate.width + 'px';
+    document.querySelector('.gate-right').style.height = scr.borderWidth + 'px';
+    document.querySelector('.gate-right').style.width = scr.borderWidth + 'px';
+    document.querySelector('.gate-right').style.bottom = -scr.borderWidth + 'px';
+    document.querySelector('.gate-right').style.borderRadius = `${scr.borderWidth}px 0 0 0`;
   };
 
   const reset = () => {
+    bit.x = Math.round(scr.width / 2 - bit.radius);
+    bit.y = Math.round(scr.height - 3*bit.radius);
+    bit.elem.style.left = bit.x + 'px';
+    bit.elem.style.top = bit.y + 'px';
+    bit.elem.style.display='block';
     ball.x = Math.round(scr.width / 2 - ball.radius);
     ball.y = Math.round(scr.height / 8 - ball.radius);
     ball.dy = 5;
@@ -93,6 +135,10 @@
     height: 0
   }; 
 
+  let gate = {
+    width: 100
+  }
+
   let bit = {
     x: 0,
     y: 0,
@@ -104,8 +150,6 @@
     down: false,
     x: 0,
     y: 0,
-    // oldX: 0,
-    // oldY: 0,
     v: 0, // скорость мышки в px/gameInterval (скаляр)
     lastTimeX: 0, // координаты мыши в прошлый период игрового интервала
     lastTimeY: 0,
@@ -178,6 +222,7 @@
         if (response.player2) {
           clearInterval(player2Waiting);
           console.log('player 2 logged in. start game.')
+          reset();
           start();
         };
       })
@@ -191,7 +236,6 @@
     });
 
 const start = () => {
-  if (game.player == game.currentPlayer) reset();
 
   // мяч на своем поле. основной цикл игры. =====================================
   // ============================================================================
@@ -219,9 +263,9 @@ const start = () => {
       bit.y += mouse.dy;
       // проверка выхода биты за поле
       bit.y = bit.y < -5 ? -5 : bit.y;
-      bit.y = bit.y > scr.height - scr.borderWidth - 2*ball.radius ? scr.height - scr.borderWidth - 2*ball.radius : bit.y;
+      bit.y = bit.y > scr.height - scr.borderWidth - 2*bit.radius ? scr.height - scr.borderWidth - 2*bit.radius : bit.y;
       bit.x = bit.x < scr.borderWidth ? scr.borderWidth : bit.x;
-      bit.x = bit.x > scr.width - scr.borderWidth - 2*ball.radius ? scr.width -scr.borderWidth - 2*ball.radius : bit.x;
+      bit.x = bit.x > scr.width - scr.borderWidth - 2*bit.radius ? scr.width -scr.borderWidth - 2*bit.radius : bit.x;
       // визуализация перемещения биты
       bit.elem.style.left = bit.x + 'px';
       bit.elem.style.top = bit.y + 'px';
@@ -232,8 +276,10 @@ const start = () => {
     ball.y += ball.dy;
     
     if (ball.y >= scr.height - 2 * ball.radius - scr.borderWidth) { // мяч коснулся низа
-      ball.dy = -ball.dy;
-      ball.y = scr.height - 2 * ball.radius  - scr.borderWidth - 1;
+      if ( ball.x + ball.radius <= (scr.width - gate.width) / 2 | ball.x + ball.radius >= (scr.width - gate.width) / 2 + gate.width) { // отскок мяча от низа
+        ball.dy = -ball.dy;
+        ball.y = scr.height - 2 * ball.radius  - scr.borderWidth - 1;
+      }
     }
     if (ball.x >= scr.width - 2 * ball.radius - scr.borderWidth) { // мяч коснулся правого края
       ball.dx = -ball.dx;
@@ -275,8 +321,8 @@ const start = () => {
     ball.elem.style.top = ball.y + 'px';
 
     // отбиваем мяч от верха (временно):
-    // if (ball.y <= 10) {ball.dy = -ball.dy;}
-    // return;
+    if (ball.y <= 10) {ball.dy = -ball.dy;}
+    return;
     
     if (ball.y <= -ball.radius) { // мяч наполовину ушел за пределы поля
   

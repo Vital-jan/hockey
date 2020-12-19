@@ -11,6 +11,7 @@
   background-color: gray;
   background-image: url("bg2.png");
   background-repeat: repeat;
+  overflow: hidden;
 }
 
 .border {
@@ -26,6 +27,7 @@
 
 .border.right {
   right: 0;
+  top: 0;
   height: 100%;
   width: 5%;
 }
@@ -36,20 +38,42 @@
   width: 100%;
 }
 
-.border .bottom-left {
+.border.bottom-left {
+  left: 0;
+  bottom: 0;
   width: 50px;
   height: 50px;
   border-radius: 0 0 0 100px;
-  border-bottom: 50px solid black;
-  border-left: 50px solid black;
+  border-bottom: 50px solid #d4cfcf;
+  border-left: 50px solid #d4cfcf;
+  background-color: #d4cfcf;
 }
 
-.border .bottom-right {
+.border.bottom-right {
+  right: 0;
+  bottom: 0;
   width: 50px;
   height: 50px;
   border-radius: 0 0 100px 0;
-  border-bottom: 50px solid black;
-  border-right: 50px solid black;
+  border-bottom: 50px solid #d4cfcf;
+  border-right: 50px solid #d4cfcf;
+  background-color: #d4cfcf;
+}
+
+.gate {
+  position: absolute;
+  background-color: gray;
+  background-repeat: repeat;
+}
+
+.gate-left {
+  position: absolute;
+  background-color: #d4cfcf;
+}
+
+.gate-right {
+  position: absolute;
+  background-color: #d4cfcf;
 }
 
 .ball {
@@ -61,10 +85,11 @@
 }
 
 .bit {
+  display: none;
   border-radius: 50%;
   width: 50px;
   height: 50px;
-  background-color: green;
+  background-color: yellowgreen;
   position: absolute;
   cursor: move;
 }
