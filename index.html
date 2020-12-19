@@ -13,17 +13,19 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="field">
-    <div class="border left"></div>
-    <div class="border right"></div>
-    <div class="border bottom"></div>
-    <div class="border bottom-left"></div>
-    <div class="border bottom-right"></div>
-    <div class="gate"></div>
-    <div class="gate-left"></div>
-    <div class="gate-right"></div>
-    <div class="ball"></div>
-    <div class="bit"></div>
+  <div class="main">
+    <div class="field">
+      <div class="border left"></div>
+      <div class="border right"></div>
+      <div class="border bottom"></div>
+      <div class="border bottom-left"></div>
+      <div class="border bottom-right"></div>
+      <div class="gate"></div>
+      <div class="gate-left"></div>
+      <div class="gate-right"></div>
+      <div class="ball"></div>
+      <div class="bit"></div>
+    </div>
   </div>
 </body>
 <script>
@@ -65,6 +67,8 @@
     let min = Math.min (window.innerWidth, window.innerHeight);
     scr.width = min;
     scr.height = min;
+    document.querySelector('.main').style.width = min + 'px';
+    document.querySelector('.main').style.height = min + 'px';
     document.querySelector('.field').style.width = min + 'px';
     document.querySelector('.field').style.height = min - scr.borderWidth + 'px';
     document.querySelector('.border.left').style.width = scr.borderWidth + 'px';

@@ -7,13 +7,21 @@ $background_color: gray;
   box-sizing: border-box;
 }
 
+.main {
+  position: fixed;
+  margin: auto;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
 .field {
   position: relative;
-  margin: auto;
   background-color: $background_color;
   background-image: url("bg2.png");
   background-repeat: repeat;
-  overflow: hidden;
 }
 
 .border {
