@@ -28,13 +28,19 @@
     </div>
   </div>
 </body>
+<script src='knock.js'></script>
 <script>
 
   const gameInterval = 20; // интервал игры в мс
   const requestInterval = 500; // частота запросов к серверу в мс
   const timeout = 20000; // таймаут окончания игры в мс
   const maxSpeed = 15; // ограничение скорости удара (px/gameInterval)
-  const friction = -0.01; // замедление, px/gameInterval;
+  const friction = 0.995; // замедление, px/gameInterval;
+
+  let waitTime; // счетчик времени ожидания ответа сервера
+  let sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
+  let contact = false; // происходит столкновение мяча с битой
+  
 
   const pass = () => { // передача мяча на другое поле
     let data = new FormData;
@@ -196,10 +202,6 @@
   
   // начало игры ===============================================
   
-  let waitTime; // счетчик времени ожидания ответа сервера
-  let sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
-  let knock = false; // произошло столкновение мяча с битой
-  
   setSizes(); // уст. размеры объектов
   ball.elem.style.display = 'none';
   
@@ -253,7 +255,7 @@ const start = () => {
     knockDX = mouse.dx;
     knockDY = mouse.dy;
     if (mouse.v > maxSpeed) {
-      let mouseAngle = Math.abs(Math.atan(mouse.y / mouse.y));
+      let mouseAngle = Math.abs(Math.atan(mouse.y / mouse.x));
       knockDY = Math.sin(mouseAngle) * maxSpeed * Math.sign(mouse.dx);
       knockDX = Math.cos(mouseAngle) * maxSpeed * Math.sign(mouse.dy);
     }
@@ -279,10 +281,28 @@ const start = () => {
     ball.x += ball.dx;
     ball.y += ball.dy;
     
-    if (ball.y >= scr.height - 2 * ball.radius - scr.borderWidth) { // мяч коснулся низа
-      if ( ball.x + ball.radius <= (scr.width - gate.width) / 2 | ball.x + ball.radius >= (scr.width - gate.width) / 2 + gate.width) { // отскок мяча от низа
+    if (ball.y >= scr.height - 2 * ball.radius - scr.borderWidth) { // мяч коснулся низа:
+      if ( ball.x + ball.radius <= (scr.width - gate.width) / 2 | ball.x + ball.radius >= (scr.width - gate.width) / 2 + gate.width) { // отскок мяча от низа:
         ball.dy = -ball.dy;
         ball.y = scr.height - 2 * ball.radius  - scr.borderWidth - 1;
+      } else // "штанга или гол":
+      {
+        if (ball.y >= scr.height) {
+          console.log('goal!!!!!!!!!!!!!!!!!!!!!!!!!');
+          reset();
+          return;
+        }
+        var distX = ball.x - (scr.width - gate.width) / 2;
+        var distY = scr.height - ball.y;
+        if ( hypotenuse(distX, distY)
+          <= (ball.radius + scr.borderWidth)) {
+            console.log(' Штанга!!!!!!!!!!!!!!!======================================')
+            var angle = Math.abs(Math.atan(distY / distX));
+            ballV = hypotenuse(ball.dx, ball.dy);
+            ball.dx = Math.cos(angle) * ballV * Math.sign(distX);
+            ball.dy = Math.sin(angle) * ballV * Math.sign(distY);
+           
+         }
       }
     }
     if (ball.x >= scr.width - 2 * ball.radius - scr.borderWidth) { // мяч коснулся правого края
@@ -295,43 +315,56 @@ const start = () => {
     }
     
     // контакт биты с мячом:
-    let distX = ball.x - bit.x;
-    let distY = ball.y - bit.y;
-    let distance = Math.pow(distX * distX + distY*distY, 0.5);
-    if (distance > (ball.radius + bit.radius)) { // конец соприкосновения биты с мячом
-      knock = false;
-      ball.elem.style.backgroundColor = 'green';
-    }
-    
-    if ((distance <= (ball.radius + bit.radius)) && knock===false) {
-      knock = true; // соприкосновение (наложение) мяча и биты
-      ball.elem.style.backgroundColor = 'red';
-      if (mouse.down) {
-        let angle = Math.abs(Math.atan(distY / distX));
-        let ballV = Math.pow(ball.dx * ball.dx + ball.dy * ball.dy, 0.5);
-        ball.dx = Math.cos(angle) * ballV * Math.sign(distX) + knockDX;
-        ball.dy = Math.sin(angle) * ballV * Math.sign(distY) + knockDY;
-        
+      let knockResult = knock(ball.x, ball.y, ball.radius, ball.dx, ball.dy, bit.x, bit.y, bit.radius, knockDX, knockDY);
+      if (knockResult) {
+        if (!contact) {
+          if (mouse.down) {
+            ball.dx = knockResult.dx1;
+            ball.dy = knockResult.dy1;
+          }
+        }
+        ball.elem.style.border = '5px solid red';
+        contact = true;
       } else {
-        console.log('Knock mouse up----------')
+        ball.elem.style.border = 'none';
+        contact = false;
       }
-    };
+    // var distX = ball.x - bit.x;
+    // var distY = ball.y - bit.y;
+    // var distance = hypotenuse(distX, distY);
+    // if (distance > (ball.radius + bit.radius)) { // конец соприкосновения биты с мячом
+    //   knock = false;
+    //   ball.elem.style.backgroundColor = 'green';
+    // }
+    
+    // if ((distance <= (ball.radius + bit.radius)) && knock===false) {
+    //   knock = true; // соприкосновение (наложение) мяча и биты
+    //   ball.elem.style.backgroundColor = 'red';
+    //   if (mouse.down) {
+    //     let angle = Math.abs(Math.atan(distY / distX));
+    //     let ballV = hypotenuse(ball.dx, ball.dy);
+    //     ball.dx = Math.cos(angle) * ballV * Math.sign(distX) + knockDX;
+    //     ball.dy = Math.sin(angle) * ballV * Math.sign(distY) + knockDY;
+    //   } else {
+    //     console.log('Knock mouse up----------')
+    //   }
+    // };
 
     // замедление
-    ball.dx += friction * Math.sign (ball.dx);
-    ball.dy += friction * Math.sign (ball.dy);
+    ball.dx *= friction;
+    ball.dy *= friction;
     // визуализируем перемещение мяча
     ball.elem.style.left = ball.x + 'px';
     ball.elem.style.top = ball.y + 'px';
 
     // отбиваем мяч от верха (временно):
-    if (ball.y <= 10) {ball.dy = -ball.dy;}
+    if (ball.y <= 0) {ball.dy = -ball.dy;}
     return;
     
     if (ball.y <= -ball.radius) { // мяч наполовину ушел за пределы поля
   
       // отправка данных на сервер
-      if (!sendRequest) {
+      if (!sendRequest) { // отправляем запрос только 1 раз, пока мяч не скроется полностью за пределами поля
         sendRequest = true;
         pass();
       }

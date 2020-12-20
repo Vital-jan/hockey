@@ -71,6 +71,7 @@
 .gate {
   position: absolute;
   background-color: gray;
+  border: 1px solid red;
   background-repeat: repeat;
 }
 
