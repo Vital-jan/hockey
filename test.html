@@ -4,25 +4,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
-  <style>
-    .rad-left {
-      width: 50px;
-      height: 50px;
-      border-radius: 0 0 0 100px;
-      border-bottom: 50px solid black;
-      border-left: 50px solid black;
-    }
-    .rad-right {
-      width: 50px;
-      height: 50px;
-      border-radius: 0 0 100px 0;
-      border-bottom: 50px solid black;
-      border-right: 50px solid black;
-    }
-  </style>
 </head>
 <body>
-  <div class="rad-left"></div>
-  <div class="rad-right"></div>
+  <div id="square" style="border: 1px solid gray; width:10px; height:10px; position:absolute;"></div>
+  <div id="line"></div>
 </body>
+<script>
+  const getAngle = (x0, y0, x, y) => Math.atan2(x - x0, y0 - y);
+  // возв. угол между точками в радианах, положительный если dx>0 или отрицательный, вверх - угол = 0;
+  const line = (el, x1, y1, x2, y2) =>
+  {
+    el.style.backgroundColor = 'blue';
+    el.style.height = '1px';
+    el.style.position = 'absolute';
+
+    let w = Math.hypot(x2-x1, y2-y1);
+    let angle = getAngle(x1,y1,x2,y2) * 180 / Math.PI;
+    el.style.left = x1 + 'px';
+    el.style.top = y1 + 'px';
+    el.style.width = w + 'px';
+    el.style.transformOrigin = '0 0';
+    el.style.transform = `rotate(${angle-90}deg)`;
+  }
+
+  const x0=50, y0=50;
+  document.querySelector('div').style.left = x0-5+'px';
+  document.querySelector('div').style.top = y0-5+'px';
+  
+  let lastx=0, lasty=0;
+  window.addEventListener('mousemove', (event)=>{
+    mx=event.pageX;
+    my=event.pageY;
+    line (document.querySelector('#line'), x0+100,y0+100,mx,my)
+    let a = getAngle(x0+100,y0+100,mx,my)*180/Math.PI;
+    let a2 = getAngle(x0+100,y0+100,x0,y0) * 180/Math.PI
+    console.log(a-a2)
+  })
+</script>
 </html>

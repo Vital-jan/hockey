@@ -29,45 +29,68 @@
   </div>
 </body>
 <script src='knock.js'></script>
+<script src='api.js'></script>
 <script>
 
-  const gameInterval = 20; // интервал игры в мс
-  const requestInterval = 500; // частота запросов к серверу в мс
-  const timeout = 20000; // таймаут окончания игры в мс
-  const maxSpeed = 15; // ограничение скорости удара (px/gameInterval)
-  const friction = 0.995; // замедление, px/gameInterval;
+class Game {
+  static gameInterval = 20; // интервал игры в мс
+  static requestInterval = 500; // частота запросов к серверу в мс
+  static timeout = 20000; // таймаут окончания игры в мс
+  static maxSpeed = 15; // ограничение скорости удара (px/gameInterval)
+  static friction = 0.995; // замедление, px/Game.gameInterval;
 
-  let waitTime; // счетчик времени ожидания ответа сервера
-  let sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
-  let contact = false; // происходит столкновение мяча с битой
+  static id = 0;
+  static currentPlayer = 0;
+  static active = false; // мяч перемещается на своем поле
+  static player = 0;
+  static player2Login = false;
+
+  static waitTime = 0; // счетчик времени ожидания ответа сервера после отправки запроса
+  static sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
+  static contact = false; // происходит столкновение мяча с битой
+  static postContact = false; // происходит столкновение мяча со штангой ворот
+}
+
+  // Важно!!!
+  // В системе координат мы оперируем не центром DOM элемента (даже если окружность),
+  // а верхним левым его углом !
+
+  let scr = {
+    borderWidth: 0,
+    width: 0,
+    height: 0,
+    gateWidth: 100,
+    gateLeft: 0,
+  }; 
+
+  let bit = {
+    x: 0,
+    y: 0,
+    radius: 40,
+    elem: document.querySelector('.bit')
+  };
+
+  let mouse = {
+    down: false,
+    x: 0,
+    y: 0,
+    v: 0, // скорость мышки в px/Game.gameInterval (скаляр)
+    lastTimeX: 0, // координаты мыши в прошлый период игрового интервала
+    lastTimeY: 0,
+    dx: 0, // вектор скорости мыши в px
+    dy: 0
+  }
+
+  let ball = {
+    x: 0,
+    y: 0,
+    dx: 0,
+    dy: 0,
+    radius: 20,
+    elem: document.querySelector('.ball')
+  };  
   
-
-  const pass = () => { // передача мяча на другое поле
-    let data = new FormData;
-    data.append('player', game.currentPlayer);
-    data.append('dx', ball.dx);
-    data.append('dy', ball.dy);
-    data.append('x', ball.x);
-    data.append('width', scr.width);
-
-    fetch('pass.php', {
-      method: "POST",
-      body: data
-    }) 
-      .then(function(response){
-          if (response.status == 200) {}// удачный ajax запрос
-           else {}// неудачный ajax запрос
-          return response.json();
-      })
-      .then(function(response){
-        game.currentPlayer = response.player;
-        console.log('new player: ', game.currentPlayer);
-      })
-      .catch(function(error) {
-        alert('fetch error!' + error)
-      });
-    };
-    
+  
   const setSizes = ()=>{ // размеры поля, мяча, ракетки
     scr.borderWidth = Math.round(window.innerWidth * 0.03);
     let min = Math.min (window.innerWidth, window.innerHeight);
@@ -105,25 +128,27 @@
     bit.elem.style.width = 2 * bit.radius + 'px'
     bit.elem.style.height = 2 * bit.radius + 'px'
 
-    gate.width = ball.radius * 6;
-    gate.left = scr.width / 2 - gate.width / 2;
+    ball.elem.style.display = 'none';
+
+    scr.gateWidth = ball.radius * 6;
+    scr.gateLeft = (scr.width - scr.gateWidth) / 2;
     document.querySelector('.gate').style.height = scr.borderWidth + 'px';
-    document.querySelector('.gate').style.width = gate.width + 2*scr.borderWidth + 'px';
+    document.querySelector('.gate').style.width = scr.gateWidth + 2*scr.borderWidth + 'px';
     document.querySelector('.gate').style.bottom = -scr.borderWidth + 'px';
-    document.querySelector('.gate').style.left = gate.left - scr.borderWidth + 'px';
-    document.querySelector('.gate-left').style.left = gate.left - scr.borderWidth + 'px';
+    document.querySelector('.gate').style.left = scr.gateLeft - scr.borderWidth + 'px';
+    document.querySelector('.gate-left').style.left = scr.gateLeft - scr.borderWidth + 'px';
     document.querySelector('.gate-left').style.height = scr.borderWidth + 'px';
     document.querySelector('.gate-left').style.width = scr.borderWidth + 'px';
     document.querySelector('.gate-left').style.bottom = -scr.borderWidth + 'px';
     document.querySelector('.gate-left').style.borderRadius = `0 ${scr.borderWidth}px 0 0`;
-    document.querySelector('.gate-right').style.left = gate.left + gate.width + 'px';
+    document.querySelector('.gate-right').style.left = scr.gateLeft + scr.gateWidth + 'px';
     document.querySelector('.gate-right').style.height = scr.borderWidth + 'px';
     document.querySelector('.gate-right').style.width = scr.borderWidth + 'px';
     document.querySelector('.gate-right').style.bottom = -scr.borderWidth + 'px';
     document.querySelector('.gate-right').style.borderRadius = `${scr.borderWidth}px 0 0 0`;
   };
 
-  const reset = () => {
+  const reset = () => { // начало игры или после гола
     bit.x = Math.round(scr.width / 2 - bit.radius);
     bit.y = Math.round(scr.height - 3*bit.radius);
     bit.elem.style.left = bit.x + 'px';
@@ -136,132 +161,183 @@
     ball.elem.style.display = 'block';
     ball.elem.style.left = ball.x + 'px';
     ball.elem.style.top = ball.y + 'px';
-    game.active = true;
+    Game.active = true;
   };
 
-  let scr = {
-    borderWidth: 0,
-    width: 0,
-    height: 0
-  }; 
+  const bottomHandler = () => 
+  { // мяч коснулся низа:
 
-  let gate = {
-    width: 100
+      if ( !(ball.y >= scr.height - 2 * ball.radius - scr.borderWidth)) return; // мяч не внизу
+
+      if ( ball.x <= scr.gateLeft - ball.radius | ball.x >= scr.gateLeft + scr.gateWidth) { // мяч не в зоне ворот, отскок мяча от низа:
+        ball.dy = -ball.dy;
+        ball.y = scr.height - 2 * ball.radius  - scr.borderWidth - 1;
+        return;
+      }
+
+      // мяч в зоне ворот, "штанга или гол":
+
+      if (ball.y - ball.radius >= scr.height) { // гол!
+        console.log('goal!!!!!!!!!!!!!!!!!!!!!!!!!');
+        reset();
+        return;
+      }
+
+      // не гол (штанга):
+
+      let postKnockResult = // столкновение мяча с левой штангой
+      knock(
+            ball.x, ball.y, ball.radius, ball.dx, ball.dy,
+            scr.gateLeft - scr.borderWidth, scr.height - scr.borderWidth, scr.borderWidth, 0, 0
+          );
+        if (postKnockResult) {
+          if (!Game.postContact) { // столкновение в данный момент не происходит
+            ball.dx = postKnockResult.dx1;
+            ball.dy = postKnockResult.dy1;
+          }
+          ball.elem.style.backgroundColor = 'red';
+          console.log('Штанга!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+          Game.postContact = true;
+
+        } else { // конец столкновения мяча со штангой
+        ball.elem.style.backgroundColor = 'green';
+        Game.postContact = false;
+      }
+      let rightPostKnockResult = // столкновение мяча с правой штангой
+      knock(
+        ball.x, ball.y, ball.radius, ball.dx, ball.dy,
+          scr.gateLeft - scr.borderWidth + scr.gateWidth, scr.height - scr.borderWidth, scr.borderWidth, 0, 0
+          );
+        if (rightPostKnockResult) {
+          if (!Game.postContact) { // столкновение в данный момент не происходит
+            ball.dx = rightPostKnockResult.dx1;
+            ball.dy = rightPostKnockResult.dy1;
+          }
+          ball.elem.style.backgroundColor = 'red';
+          console.log('Штанга!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+          Game.postContact = true;
+
+        } else { // конец столкновения мяча со штангой
+        ball.elem.style.backgroundColor = 'green';
+        Game.postContact = false;
+      }
   }
 
-  let bit = {
-    x: 0,
-    y: 0,
-    radius: 40,
-    elem: document.querySelector('.bit')
-  };
+  // игровой интервал мяч на своем поле. основной цикл игры. ============
+  const activeIntervalFunction = () => {
+    
+    if (!Game.active) return;
 
-  let mouse = {
-    down: false,
-    x: 0,
-    y: 0,
-    v: 0, // скорость мышки в px/gameInterval (скаляр)
-    lastTimeX: 0, // координаты мыши в прошлый период игрового интервала
-    lastTimeY: 0,
-    dx: 0, // вектор скорости мыши в px
-    dy: 0
-  }
-
-  let ball = {
-    x: 0,
-    y: 0,
-    dx: 0,
-    dy: 0,
-    radius: 20,
-    elem: document.querySelector('.ball')
-  };  
+    ball.x += ball.dx;
+    ball.y += ball.dy;
   
-  let game = {
-    id: 0,
-    currentPlayer: 0,
-    active: false, // мяч перемещается
-    ready: false, // мяч реагирует на ракетку
-    player: 0,
-    player2Login: false
-  };
+    bottomHandler();
+      
+    if (ball.x >= scr.width - 2 * ball.radius - scr.borderWidth) 
+    { // мяч коснулся правого края
+      ball.dx = -ball.dx;
+      ball.x = scr.width - 2 * ball.radius - scr.borderWidth - 1;
+    }
+    if (ball.x <= 2 * ball.radius - scr.borderWidth) 
+    { // мяч коснулся левого края
+      ball.dx = -ball.dx;
+      ball.x = 2 * ball.radius - scr.borderWidth + 1;
+    }
+    
+    // контакт биты с мячом:
+    let knockResult = knock(ball.x, ball.y, ball.radius, ball.dx, ball.dy, bit.x, bit.y, bit.radius, mouse.knockDX, mouse.knockDY);
+    if (knockResult) {
+      if (!Game.contact) {
+        if (mouse.down) {
+          ball.dx = knockResult.dx1;
+          ball.dy = knockResult.dy1;
+          }
+        }
+        ball.elem.style.border = '5px solid red';
+        Game.contact = true;
+      } else { // конец столкновения мяча с битой
+        ball.elem.style.border = 'none';
+        Game.contact = false;
+      }
+      
+      // замедление
+      ball.dx *= Game.friction;
+      ball.dy *= Game.friction;
+      // визуализируем перемещение мяча
+      ball.elem.style.left = ball.x + 'px';
+    ball.elem.style.top = ball.y + 'px';
+    
+    // отбиваем мяч от верха (временно):///////////////////////////////////////////////////////////////
+    if (ball.y <= 0) {ball.dy = -ball.dy;}
+    return;
+    
+    if (ball.y <= -ball.radius) { // мяч наполовину ушел за пределы поля
+      
+      // отправка данных на сервер
+      if (!Game.sendRequest) { // отправляем запрос только 1 раз, пока мяч не скроется полностью за пределами поля
+        Game.sendRequest = true;
+        pass();
+      }
+    };
+    
+    if (ball.y <= -ball.radius * 2) {// мяч полностью ушел за пределы поля
+      Game.active = false; // стоп движение мяча
+      Game.sendRequest = false;
+    };
+  } // end ---------- activeInterval
 
-  bit.elem.addEventListener('mousedown', (event)=>{
+  
+  const passiveIntervalFunction = () => { // мяч на поле соперника
+    if (Game.active)
+    {
+      Game.waitTime = 0;
+      return;
+    };
+    wait();
+    Game.waitTime += Game.requestInterval;
+    if (Game.waitTime >= Game.timeout) 
+    {
+      clearInterval(passiveInterval);
+      console.log('Game.timeout ---------------');
+    }
+  };
+  
+  // начало игры ===============================================
+  bit.elem.addEventListener('mousedown', (event)=>
+  {
     event.preventDefault();
     event.stopPropagation();
     mouse.down = true;
   });
 
-  window.addEventListener('mouseup', (event)=>{
+  window.addEventListener('mouseup', (event)=>
+  {
       mouse.down = false;
   });
 
-  window.addEventListener('mousemove', (event)=>{
-    mouse.x = event.pageX;
-    mouse.y = event.pageY;
-  });
-  
-  // начало игры ===============================================
-  
-  setSizes(); // уст. размеры объектов
-  ball.elem.style.display = 'none';
-  
-  fetch('begin.php', { // check to login 1 or 2 player
-    method: "POST",
-  }) 
-  .then(function(response){
-    if (response.status == 200) {}// удачный ajax запрос
-    else {}// неудачный ajax запрос
-    return response.json();
-  })
-  .then(function(json) {
-    game.currentPlayer = 1;
-    game.player = json.player;
-    console.log('i am player: ', game.player);
-
-    let player2Waiting = setInterval (() => { // wait to player 2 connect
-      console.log('waiting to 2-nd player connect.....')
-      fetch('wait2player.php', { // check to login 1 or 2 player
-        method: "POST",
-      })
-      .then((response)=>{return response.json()})
-      .then((response)=>{
-        if (response.player2) {
-          clearInterval(player2Waiting);
-          console.log('player 2 logged in. start game.')
-          reset();
-          start();
-        };
-      })
-      .catch (()=>{alert('wait2player.php error' + error)})
-
-    }, requestInterval);
-
-    })
-    .catch(function(error) {
-        alert('begin.php error!' + error)
-    });
-
-const start = () => {
-
-  // мяч на своем поле. основной цикл игры. =====================================
-  // ============================================================================
-  let activeInterval = setInterval(()=>{ // игровой интервал
-    // вычисляем вектор скорости мыши в игровом интервале
-    mouse.dx = mouse.x - mouse.lastTimeX;
-    mouse.dy = mouse.y - mouse.lastTimeY;
-    // вычисляем скаляр скорости движения мыши:
-    mouse.v = Math.pow( Math.pow(mouse.dx, 2) + Math.pow(mouse.dy, 2), 0.5);
-    // ограничиваем максимальную скорость мыши:
-    knockDX = mouse.dx;
-    knockDY = mouse.dy;
-    if (mouse.v > maxSpeed) {
-      let mouseAngle = Math.abs(Math.atan(mouse.y / mouse.x));
-      knockDY = Math.sin(mouseAngle) * maxSpeed * Math.sign(mouse.dx);
-      knockDX = Math.cos(mouseAngle) * maxSpeed * Math.sign(mouse.dy);
-    }
-    // запоминаем предыдущее положение мыши для вычислений в следующей итерации игрового интервала
+  window.addEventListener('mousemove', (event)=>
+  {
+    // запоминаем предыдущее положение мыши
     mouse.lastTimeX = mouse.x;
     mouse.lastTimeY = mouse.y;
+
+    mouse.x = event.pageX;
+    mouse.y = event.pageY;
+
+    // вычисляем вектор скорости мыши
+    mouse.dx = mouse.x - mouse.lastTimeX;
+    mouse.dy = mouse.y - mouse.lastTimeY;
+    
+    // вычисляем скаляр скорости движения мыши:
+    mouse.v = hypotenuse(mouse.dx, mouse.dy, 0.5);
+    if (mouse.v > Game.maxSpeed) {
+      let mouseAngle = Math.abs(Math.atan(mouse.y / mouse.x));
+      mouse.knockDY = Math.sin(mouseAngle) * Game.maxSpeed * Math.sign(mouse.dx);
+      mouse.knockDX = Math.cos(mouseAngle) * Game.maxSpeed * Math.sign(mouse.dy);
+    }
+    // ограничиваем максимальную скорость мыши:
+    mouse.knockDX = mouse.dx;
+    mouse.knockDY = mouse.dy;
 
     if (mouse.down) { // если удерживается кнопка мыши:
       // перемещение биты:
@@ -269,154 +345,20 @@ const start = () => {
       bit.y += mouse.dy;
       // проверка выхода биты за поле
       bit.y = bit.y < -5 ? -5 : bit.y;
-      bit.y = bit.y > scr.height - scr.borderWidth - 2*bit.radius ? scr.height - scr.borderWidth - 2*bit.radius : bit.y;
+      bit.y = bit.y > scr.height - scr.borderWidth /* - 2*bit.radius */ ? scr.height - scr.borderWidth - 2*bit.radius : bit.y;
       bit.x = bit.x < scr.borderWidth ? scr.borderWidth : bit.x;
       bit.x = bit.x > scr.width - scr.borderWidth - 2*bit.radius ? scr.width -scr.borderWidth - 2*bit.radius : bit.x;
       // визуализация перемещения биты
       bit.elem.style.left = bit.x + 'px';
       bit.elem.style.top = bit.y + 'px';
     }
+      
+  });
 
-    if (!game.active) return;
-    ball.x += ball.dx;
-    ball.y += ball.dy;
-    
-    if (ball.y >= scr.height - 2 * ball.radius - scr.borderWidth) { // мяч коснулся низа:
-      if ( ball.x + ball.radius <= (scr.width - gate.width) / 2 | ball.x + ball.radius >= (scr.width - gate.width) / 2 + gate.width) { // отскок мяча от низа:
-        ball.dy = -ball.dy;
-        ball.y = scr.height - 2 * ball.radius  - scr.borderWidth - 1;
-      } else // "штанга или гол":
-      {
-        if (ball.y >= scr.height) {
-          console.log('goal!!!!!!!!!!!!!!!!!!!!!!!!!');
-          reset();
-          return;
-        }
-        var distX = ball.x - (scr.width - gate.width) / 2;
-        var distY = scr.height - ball.y;
-        if ( hypotenuse(distX, distY)
-          <= (ball.radius + scr.borderWidth)) {
-            console.log(' Штанга!!!!!!!!!!!!!!!======================================')
-            var angle = Math.abs(Math.atan(distY / distX));
-            ballV = hypotenuse(ball.dx, ball.dy);
-            ball.dx = Math.cos(angle) * ballV * Math.sign(distX);
-            ball.dy = Math.sin(angle) * ballV * Math.sign(distY);
-           
-         }
-      }
-    }
-    if (ball.x >= scr.width - 2 * ball.radius - scr.borderWidth) { // мяч коснулся правого края
-      ball.dx = -ball.dx;
-      ball.x = scr.width - 2 * ball.radius - scr.borderWidth - 1;
-    }
-    if (ball.x <= 2 * ball.radius - scr.borderWidth) { // мяч коснулся левого края
-      ball.dx = -ball.dx;
-      ball.x = 2 * ball.radius - scr.borderWidth + 1;
-    }
-    
-    // контакт биты с мячом:
-      let knockResult = knock(ball.x, ball.y, ball.radius, ball.dx, ball.dy, bit.x, bit.y, bit.radius, knockDX, knockDY);
-      if (knockResult) {
-        if (!contact) {
-          if (mouse.down) {
-            ball.dx = knockResult.dx1;
-            ball.dy = knockResult.dy1;
-          }
-        }
-        ball.elem.style.border = '5px solid red';
-        contact = true;
-      } else {
-        ball.elem.style.border = 'none';
-        contact = false;
-      }
-    // var distX = ball.x - bit.x;
-    // var distY = ball.y - bit.y;
-    // var distance = hypotenuse(distX, distY);
-    // if (distance > (ball.radius + bit.radius)) { // конец соприкосновения биты с мячом
-    //   knock = false;
-    //   ball.elem.style.backgroundColor = 'green';
-    // }
-    
-    // if ((distance <= (ball.radius + bit.radius)) && knock===false) {
-    //   knock = true; // соприкосновение (наложение) мяча и биты
-    //   ball.elem.style.backgroundColor = 'red';
-    //   if (mouse.down) {
-    //     let angle = Math.abs(Math.atan(distY / distX));
-    //     let ballV = hypotenuse(ball.dx, ball.dy);
-    //     ball.dx = Math.cos(angle) * ballV * Math.sign(distX) + knockDX;
-    //     ball.dy = Math.sin(angle) * ballV * Math.sign(distY) + knockDY;
-    //   } else {
-    //     console.log('Knock mouse up----------')
-    //   }
-    // };
+  setSizes(); // уст. размеры объектов
+  begin();
+  let activeInterval = setInterval( activeIntervalFunction, Game.gameInterval);
+  let passiveInterval = setInterval( passiveIntervalFunction, Game.requestInterval);
 
-    // замедление
-    ball.dx *= friction;
-    ball.dy *= friction;
-    // визуализируем перемещение мяча
-    ball.elem.style.left = ball.x + 'px';
-    ball.elem.style.top = ball.y + 'px';
-
-    // отбиваем мяч от верха (временно):
-    if (ball.y <= 0) {ball.dy = -ball.dy;}
-    return;
-    
-    if (ball.y <= -ball.radius) { // мяч наполовину ушел за пределы поля
-  
-      // отправка данных на сервер
-      if (!sendRequest) { // отправляем запрос только 1 раз, пока мяч не скроется полностью за пределами поля
-        sendRequest = true;
-        pass();
-      }
-    };
-
-    if (ball.y <= -ball.radius * 2) {// мяч полностью ушел за пределы поля
-      game.active = false; // стоп движение мяча
-      sendRequest = false;
-    };
-  }, gameInterval); // activeInterval
-    
-  // =================================================================
-  let passiveInterval = setInterval(()=>{ // мяч на поле соперника
-    if (game.active) {
-      waitTime = 0;
-      return;
-    };
-
-    fetch('wait.php', { // проверка передачи мяча назад
-        method: "POST",
-      }) 
-      .then(function(response){
-        if (response.status == 200) {}// удачный ajax запрос
-        else {}// неудачный ajax запрос
-        return response.json();
-      })
-      .then(function(response) {
-        if (response.player == game.player) {
-          game.currentPlayer = response.player;
-          let k = scr.width / +response.width; // коєф. разницы размера экранов
-          ball.dy = Math.round(-response.dy * k);
-          ball.dx = Math.round(-response.dx * k);
-          ball.y = +ball.radius;
-          ball.x = Math.round(+response.x * k);
-          console.log(response.width)
-          
-          // - добавить пересчет координат x пропорционально
-          
-          game.active = true;
-          ball.elem.style.display = "block";
-        }
-      })
-      .catch(function(error) {
-          alert('wait error!' + error)
-      });
-
-    waitTime += requestInterval;
-    if (waitTime >= timeout) {
-      clearInterval(passiveInterval);
-      console.log('Timeout ---------------');
-    }
-  }, requestInterval);
-};
 </script>
 </html>
