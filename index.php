@@ -71,43 +71,8 @@ if (file_exists('game.json')) {
 <script src='api.js'></script>
 <script>
 
-class Game {
-  constructor () {
-    // создаем єлемент игровое поле:
-    this.el = document.createElement('div');
-    document.body.append (this.el);
-    this.el.classList.add('field');
-    // устанавливаем значения параметров:
-    this.gameInterval = 20; // интервал игры в мс
-    this.requestInterval = 500; // частота запросов к серверу в мс
-    this.timeout = 20000; // таймаут окончания игры в мс
-    this.maxSpeed = 15; // ограничение скорости удара (px/gameInterval)
-    this.friction = 0.995; // замедление, px/game.gameInterval;
-    // переменные:
-    this.currentPlayer = 1; // игрок, владеющий мячом
-    this.active = false; // мяч перемещается на своем поле
-    this.player = 0; // номер игрока
-    this.waitTime = 0; // счетчик времени ожидания ответа сервера после отправки запроса
-    this.sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
-    this.obs = []; // массив объектов игры
-    this.setSize(); // устанавливаем размеры игрового поля
-  }
-
-  setSize () {
-    this.borderWidth = Math.round(window.innerWidth * 0.03);
-    this.width = Math.min (window.innerWidth, window.innerHeight);
-    this.height = this.width;
-  }
-  
-  show () {
-    this.el.style.width = this.width + 'px';
-    this.el.style.height = this.height + 'px';
-    this.el.style.visibility = 'visible';
-  }
-}
-
 class Obj {
-  constructor (x, y, w, h, r, parent, class, fixed = false, transparency = false) {
+  constructor (x, y, w, h, r, parent, className = '', fixed = false, transparency = false) {
     this.x = x;
     this.y = y;
     this.dx = 0;
@@ -123,49 +88,92 @@ class Obj {
     this.fixed = fixed;
     this.transparency = transparency;
 
-    this.create(); // создаем DOM элемент
-    this.setSize(); 
+    this.create(parent, className); // создаем DOM элемент
+    this.setSize(w, h, r); 
   }
 
-  create (parent, class) {
+  create (parent, className) {
     this.el = document.createElement('div');
     parent.append (this.el);
-    this.el.classList.add(class);
+    if (className) className.split(' ').forEach ((i)=>this.el.classList.add(i));
+    return this;
   }
 
   show () {
     this.el.style.left = this.x + 'px';
     this.el.style.top = this.y + 'px';
     this.el.style.width = this.width + 'px';
-    this.el.style.height = this.width + 'px';
-    if (this.r) this.el.style.borderRadius = '50%';
+    this.el.style.height = this.height + 'px';
+    if (this.radius) this.el.style.borderRadius = '50%';
     this.el.style.visibility = 'visible';
+    return this;
   };
+
   hide () {
     this.el.style.visibility = 'hidden';
   };
+
   setSize (w, h, r) {};
-  reset () {};
+
+  reset () {
+    this.x = 0;
+    this.y = 0;
+    this.dx = 0;
+    this.dy = 0;
+  };
+
   move () {
+    if (this.fixed) return;
     this.x += this.dx;
     this.y += this.dy;
     this.el.style.left = this.x + 'px';
     this.el.style.top = this.y + 'px';
   };
 }
-class Border extends obj {
-  constructor (param) {
-    switch (param) {
-    case 0: { // left border
-      this.width = Math.round(game.width * 0.03);
-      this.height = 
-      break;
-    }
-    case 2: {console.log(2); break}
-    case 3: {console.log(3); break}
+
+class Game extends Obj{
+  constructor () {
+    // устанавливаем значения параметров:
+    super(0, 0, 0, 0, 0, document.body, 'field');
+    this.gameInterval = 20; // интервал игры в мс
+    this.requestInterval = 500; // частота запросов к серверу в мс
+    this.timeout = 20000; // таймаут окончания игры в мс
+    this.maxSpeed = 15; // ограничение скорости удара (px/gameInterval)
+    this.friction = 0.995; // замедление, px/game.gameInterval;
+    // переменные:
+    this.currentPlayer = 1; // игрок, владеющий мячом
+    this.active = false; // мяч перемещается на своем поле
+    this.player = 0; // номер игрока
+    this.waitTime = 0; // счетчик времени ожидания ответа сервера после отправки запроса
+    this.sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
+    this.obs = []; // массив объектов игры
+    this.x = 0;
+    this.y = 0;
+    this.create(document.body, 'field');
+    this.setSize(); // устанавливаем размеры игрового поля
   }
+
+  setSize () {
+    this.borderWidth = Math.round(window.innerWidth * 0.03);
+    this.width = Math.min (window.innerWidth, window.innerHeight);
+    this.height = this.width;
+    return this;
+  }
+
+  show () {
+    super.show();
+    this.el.style.borderBottomLeftRadius = this.borderWidth + 'px';
+    this.el.style.borderBottomRightRadius = this.borderWidth + 'px';
   }
 }
+
+class Border extends Obj {
+  constructor (x, y, w, h, r, parent, className) {
+    super(x, y, w, h, r, parent, className);
+    this.fixed = true;
+  }
+}
+
 class Ball extends Obj {
   constructor () {};
 }
@@ -173,10 +181,23 @@ class Ball extends Obj {
 const startGame = (player)=>{
   console.log(`start game. Player${player}`)
   document.body.innerHTML = '';
-  game = new Game;
+  let game = new Game;
   game.show();
   // создаем объекты:
-  for (let n == 0; n < 4; n++) game.obs.push(new Border (n));
+  let gateWidth = Math.round(game.width / 3);
+  obj = new Border (0, 0, game.borderWidth, game.height, 0, game.el, 'border');
+  game.obs.push(obj);
+  obj = new Border (game.width - game.borderWidth, 0, game.borderWidth, game.height, 0, game.el, 'border');
+  game.obs.push(obj);
+  obj = new Border (0, game.height - game.borderWidth, (game.width - gateWidth) / 2, game.borderWidth, 0, game.el, 'border');
+  game.obs.push(obj);
+  obj = new Border (game.width - (game.width - gateWidth) / 2, game.height - game.borderWidth, (game.width - gateWidth) / 2, game.borderWidth, 0, game.el, 'border');
+  game.obs.push(obj);
+  obj = new Border (game.width - (game.width - gateWidth) / 2 - game.borderWidth, game.height - game.borderWidth, 0,0, game.borderWidth * 2, game.el, 'border');
+  game.obs.push(obj);
+  obj = new Border ((game.width - gateWidth) / 2 - game.borderWidth, game.height - game.borderWidth, 0, 0, game.borderWidth * 2, game.el, 'border');
+  game.obs.push(obj);
+  game.obs.forEach((i)=>i.show());
 }
 
 window.onload = ()=>{
