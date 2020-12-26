@@ -24,46 +24,8 @@ const pass = () => { // передача мяча на другое поле
     });
   };
 
-const begin = () => { // начало игры, регистрация
-  fetch('begin.php', { // check to login 1 or 2 player
-    method: "POST",
-  }) 
-  .then(function(response){
-    if (response.status == 200) {}// удачный ajax запрос
-    else {}// неудачный ajax запрос
-    return response.json();
-  })
-  .then(function(json) {
-    Game.currentPlayer = 1;
-    Game.player = json.player;
-    console.log('i am player: ', Game.player);
-
-    let player2Waiting = setInterval (() => { // wait to player 2 connect
-      console.log('waiting to 2-nd player connect.....')
-      fetch('wait2player.php', { // check to login 1 or 2 player
-        method: "POST",
-      })
-      .then((response)=>{return response.json()})
-      .then((response)=>{
-        if (response.player2) {
-          clearInterval(player2Waiting);
-          console.log('player 2 logged in. start game.')
-          reset();
-          start();
-        };
-      })
-      .catch (()=>{alert('wait2player.php error' + error)})
-
-    }, Game.requestInterval);
-
-    })
-    .catch(function(error) {
-        alert('begin.php error!' + error)
-    });
-}
-
-const wait = () => {
-  fetch('wait.php', { // проверка передачи мяча назад
+const waitBack = () => {
+  fetch('waitback.php', { // проверка передачи мяча назад
     method: "POST",
   }) 
   .then(function(response){

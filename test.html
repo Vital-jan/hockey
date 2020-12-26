@@ -9,24 +9,15 @@
   <div id="square" style="border: 1px solid gray; width:10px; height:10px; position:absolute;"></div>
   <div id="line"></div>
 </body>
+<script src="calc.js"></script>
 <script>
-  const getAngle = (x0, y0, x, y) => Math.atan2(x - x0, y0 - y);
-  // возв. угол между точками в радианах, положительный если dx>0 или отрицательный, вверх - угол = 0;
-  const line = (el, x1, y1, x2, y2) =>
-  {
-    el.style.backgroundColor = 'blue';
-    el.style.height = '1px';
-    el.style.position = 'absolute';
-
-    let w = Math.hypot(x2-x1, y2-y1);
-    let angle = getAngle(x1,y1,x2,y2) * 180 / Math.PI;
-    el.style.left = x1 + 'px';
-    el.style.top = y1 + 'px';
-    el.style.width = w + 'px';
-    el.style.transformOrigin = '0 0';
-    el.style.transform = `rotate(${angle-90}deg)`;
+  x = 2;
+  switch (x) {
+    case 1: {console.log(1); break}
+    case 2: {console.log(2); break}
+    case 3: {console.log(3); break}
   }
-
+/*
   const x0=50, y0=50;
   document.querySelector('div').style.left = x0-5+'px';
   document.querySelector('div').style.top = y0-5+'px';
@@ -35,10 +26,11 @@
   window.addEventListener('mousemove', (event)=>{
     mx=event.pageX;
     my=event.pageY;
-    line (document.querySelector('#line'), x0+100,y0+100,mx,my)
-    let a = getAngle(x0+100,y0+100,mx,my)*180/Math.PI;
-    let a2 = getAngle(x0+100,y0+100,x0,y0) * 180/Math.PI
+    line (document.querySelector('#line'), x0+100,y0+100,mx,my, 'lightblue')
+    let a = getAngle(x0+100,y0+100,mx,my);
+    let a2 = getAngle(x0+100,y0+100,x0,y0);
     console.log(a-a2)
   })
+  */
 </script>
 </html>

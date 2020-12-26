@@ -7,21 +7,41 @@ $background_color: gray;
   box-sizing: border-box;
 }
 
-.main {
+body {
+  width: 100vw;
+  height: 100vh;
+  background-image: linear-gradient(-45deg, rgb(169, 200, 209), rgb(204, 204, 236));
+  background-size: cover;
+  font-size: 20px;
+  h1 {
+    text-align: center;
+    color: rgb(207, 161, 35);
+    font-weight: bold;
+    font-size: 2rem;
+    margin-top: 20%;
+  }
+  h2 {
+    text-align: center;
+    font-size: 1.5rem;
+    color:rgb(17, 6, 65);
+    img {
+      max-width: 50px;
+      height: auto;
+    }
+  }
+}
+.field {
   position: fixed;
-  margin: auto;
+  margin: 0 auto;
+  background-color: $background_color;
+  background-image: url("bg2.png");
+  background-repeat: repeat;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   overflow: hidden;
-}
-
-.field {
-  position: relative;
-  background-color: $background_color;
-  background-image: url("bg2.png");
-  background-repeat: repeat;
+  visibility: hidden;
 }
 
 .border {
