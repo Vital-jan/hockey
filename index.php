@@ -77,19 +77,10 @@ class Obj {
     this.y = y;
     this.dx = 0;
     this.dy = 0;
-    this.radius = r;
-    this.width = w;
-    this.height = h;
-    if (r) {
-      this.width = r;
-      this.height = r;
-    }
     this.el; // DOM element
     this.fixed = fixed;
     this.transparency = transparency;
-
-    this.create(parent, className); // создаем DOM элемент
-    this.setSize(w, h, r); 
+    this.create(parent, className).setSize(w, h, r); // создаем DOM элемент и уст. его размеры
   }
 
   create (parent, className) {
@@ -98,28 +89,39 @@ class Obj {
     if (className) className.split(' ').forEach ((i)=>this.el.classList.add(i));
     return this;
   }
-
+  
   show () {
     this.el.style.left = this.x + 'px';
     this.el.style.top = this.y + 'px';
     this.el.style.width = this.width + 'px';
     this.el.style.height = this.height + 'px';
-    if (this.radius) this.el.style.borderRadius = '50%';
     this.el.style.visibility = 'visible';
     return this;
   };
-
+  
   hide () {
     this.el.style.visibility = 'hidden';
+    return this;
   };
-
-  setSize (w, h, r) {};
+  
+  setSize (w, h, r) {
+    this.radius = r;
+    this.width = w;
+    this.height = h;
+    if (r) {
+      this.width = r * 2;
+      this.height = r * 2;
+    }
+    if (this.radius) this.el.style.borderRadius = '50%';
+    return this;
+  };
 
   reset () {
     this.x = 0;
     this.y = 0;
     this.dx = 0;
     this.dy = 0;
+    return this;
   };
 
   move () {
@@ -128,11 +130,12 @@ class Obj {
     this.y += this.dy;
     this.el.style.left = this.x + 'px';
     this.el.style.top = this.y + 'px';
+    return this;
   };
 }
 
 class Game extends Obj{
-  constructor () {
+  constructor (player) {
     // устанавливаем значения параметров:
     super(0, 0, 0, 0, 0, document.body, 'field');
     this.gameInterval = 20; // интервал игры в мс
@@ -143,14 +146,13 @@ class Game extends Obj{
     // переменные:
     this.currentPlayer = 1; // игрок, владеющий мячом
     this.active = false; // мяч перемещается на своем поле
-    this.player = 0; // номер игрока
+    this.player = player; // номер игрока
     this.waitTime = 0; // счетчик времени ожидания ответа сервера после отправки запроса
     this.sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
     this.obs = []; // массив объектов игры
     this.x = 0;
     this.y = 0;
-    this.create(document.body, 'field');
-    this.setSize(); // устанавливаем размеры игрового поля
+    this.create(document.body, 'field').setSize(); // создаем DOM элемент и устанавливаем размеры игрового поля
   }
 
   setSize () {
@@ -175,11 +177,78 @@ class Border extends Obj {
 }
 
 class Ball extends Obj {
-  constructor () {};
+  // constructor (x, y, w, h, r, parent, className) {
+  //   super(x, y, w, h, r, parent, className);
+  // };
 }
+
+class Bit extends Obj {
+  constructor (x, y, w, h, r, parent, className) {
+    super(x, y, w, h, r, parent, className);
+    this.hold = false;
+  }
+
+  move (dx, dy) {
+    if (!this.hold) return;
+    this.x += dx;
+    this.y += dy;
+    this.el.style.left = this.x + 'px';
+    this.el.style.top = this.y + 'px';
+  }
+}
+
+class Mouse {
+  constructor () {
+    this.x = 0;
+    this.y = 0;
+    this.dx = 0;
+    this.dy = 0;
+    this.down = false;
+    this.lastX = 0;
+    this.lastY = 0;
+  }
+  
+  save () {
+    this.lastX = this.x;
+    this.lastY = this.y;
+  }
+  refresh () {
+    this.dx = this.x - this.lastX;
+    this.dy = this.y - this.lastY;
+  }
+}
+// ======================= Start ========================
 
 const startGame = (player)=>{
   console.log(`start game. Player${player}`)
+  
+  let mouse = new Mouse;
+  window.addEventListener('mousemove', (event)=>{
+console.log('down:',mouse.down, 'mousein:', bit.mouseIn, 'hold:',bit.hold)
+    mouse.refresh();
+    if (bit.hold) bit.move(mouse.dx, mouse.dy);
+    mouse.save();
+    
+    mouse.x = event.pageX;
+    mouse.y = event.pageY;
+  });
+
+  window.addEventListener('mousedown', (event)=>{
+    mouse.down = true;
+    console.log('down:',mouse.down)
+    if (bit.mouseIn) bit.hold = true;
+    mouse.x = event.pageX;
+    mouse.x = event.pageX;
+    mouse.y = event.pageY
+    // mouse.lastX = mouse.x;
+    // mouse.lastY = mouse.y;
+  });
+
+  window.addEventListener('mouseup', (event)=>{
+    mouse.down = false;
+    bit.hold = false;
+  });
+
   document.body.innerHTML = '';
   let game = new Game;
   game.show();
@@ -193,11 +262,39 @@ const startGame = (player)=>{
   game.obs.push(obj);
   obj = new Border (game.width - (game.width - gateWidth) / 2, game.height - game.borderWidth, (game.width - gateWidth) / 2, game.borderWidth, 0, game.el, 'border');
   game.obs.push(obj);
-  obj = new Border (game.width - (game.width - gateWidth) / 2 - game.borderWidth, game.height - game.borderWidth, 0,0, game.borderWidth * 2, game.el, 'border');
+  obj = new Border (game.width - (game.width - gateWidth) / 2 - game.borderWidth, game.height - game.borderWidth, 0,0, game.borderWidth, game.el, 'border');
   game.obs.push(obj);
-  obj = new Border ((game.width - gateWidth) / 2 - game.borderWidth, game.height - game.borderWidth, 0, 0, game.borderWidth * 2, game.el, 'border');
+  obj = new Border ((game.width - gateWidth) / 2 - game.borderWidth, game.height - game.borderWidth, 0, 0, game.borderWidth, game.el, 'border');
   game.obs.push(obj);
+  let ballRadius = game.width * 0.03;
+  let ball = new Ball (game.width / 2 - ballRadius, game.height / 2, ballRadius, ballRadius, ballRadius, game.el, 'ball');
+  game.obs.push(ball);
+  let bitRadius = ballRadius * 1.1;
+  let bit = new Bit (game.width / 2 - bitRadius, game.height - 3 * bitRadius, bitRadius, bitRadius, bitRadius, game.el, 'bit');
+  game.obs.push(bit);
+
+  bit.el.addEventListener('mouseenter', ()=>{
+    bit.mouseIn = true;
+  })
+  bit.el.addEventListener('mouseleave', ()=>{
+    bit.mouseIn = false;
+    console.log('leave')
+  })
+
   game.obs.forEach((i)=>i.show());
+
+  // ================= Main game loop =======================
+  // temporarity for debug:
+    game.active = true;
+
+  let gameIterval = setInterval(()=>{
+    if (!game.active) return;
+  }, game.gameInterval);
+  // ==========  ball comeback waiting loop ===========
+  let passInterval = setInterval (()=>{
+    if (game.active) return;
+    console.log('wait pass')
+  }, game.requestInterval);
 }
 
 window.onload = ()=>{
