@@ -186,69 +186,54 @@ class Bit extends Obj {
   constructor (x, y, w, h, r, parent, className) {
     super(x, y, w, h, r, parent, className);
     this.hold = false;
+    this.mouseIn = false;
+    this.correctX = 0;
+    this.correctY = 0;
   }
 
-  move (dx, dy) {
+  move (event) {
+    event.stopPropagation();
+    event.preventDefault();
     if (!this.hold) return;
-    this.x += dx;
-    this.y += dy;
+    this.x = event.pageX + this.correctX;
+    this.y = event.pageY + this.correctY;
+
+    if (this.x < 0) this.x = 0;
+    if (this.y < 0) this.y = 0;
     this.el.style.left = this.x + 'px';
     this.el.style.top = this.y + 'px';
   }
+  setHold (event) {
+    event.stopPropagation();
+    event.preventDefault();
+    if (this.mouseIn) {
+      this.hold = true;
+      this.correctX = this.x - event.pageX;
+      this.correctY = this.y - event.pageY;
+    }
+  }
+  clearHold () {
+    event.stopPropagation();
+    event.preventDefault();
+    this.hold = false;
+  }
+  mouseEnter () {
+    event.stopPropagation();
+    event.preventDefault();
+    this.mouseIn = true;
+  }
+  mouseLeave () {
+    event.stopPropagation();
+    event.preventDefault();
+    this.mouseIn = false;
+  }
 }
 
-class Mouse {
-  constructor () {
-    this.x = 0;
-    this.y = 0;
-    this.dx = 0;
-    this.dy = 0;
-    this.down = false;
-    this.lastX = 0;
-    this.lastY = 0;
-  }
-  
-  save () {
-    this.lastX = this.x;
-    this.lastY = this.y;
-  }
-  refresh () {
-    this.dx = this.x - this.lastX;
-    this.dy = this.y - this.lastY;
-  }
-}
 // ======================= Start ========================
 
 const startGame = (player)=>{
   console.log(`start game. Player${player}`)
   
-  let mouse = new Mouse;
-  window.addEventListener('mousemove', (event)=>{
-console.log('down:',mouse.down, 'mousein:', bit.mouseIn, 'hold:',bit.hold)
-    mouse.refresh();
-    if (bit.hold) bit.move(mouse.dx, mouse.dy);
-    mouse.save();
-    
-    mouse.x = event.pageX;
-    mouse.y = event.pageY;
-  });
-
-  window.addEventListener('mousedown', (event)=>{
-    mouse.down = true;
-    console.log('down:',mouse.down)
-    if (bit.mouseIn) bit.hold = true;
-    mouse.x = event.pageX;
-    mouse.x = event.pageX;
-    mouse.y = event.pageY
-    // mouse.lastX = mouse.x;
-    // mouse.lastY = mouse.y;
-  });
-
-  window.addEventListener('mouseup', (event)=>{
-    mouse.down = false;
-    bit.hold = false;
-  });
-
   document.body.innerHTML = '';
   let game = new Game;
   game.show();
@@ -266,21 +251,21 @@ console.log('down:',mouse.down, 'mousein:', bit.mouseIn, 'hold:',bit.hold)
   game.obs.push(obj);
   obj = new Border ((game.width - gateWidth) / 2 - game.borderWidth, game.height - game.borderWidth, 0, 0, game.borderWidth, game.el, 'border');
   game.obs.push(obj);
+
   let ballRadius = game.width * 0.03;
   let ball = new Ball (game.width / 2 - ballRadius, game.height / 2, ballRadius, ballRadius, ballRadius, game.el, 'ball');
   game.obs.push(ball);
+
   let bitRadius = ballRadius * 1.1;
   let bit = new Bit (game.width / 2 - bitRadius, game.height - 3 * bitRadius, bitRadius, bitRadius, bitRadius, game.el, 'bit');
   game.obs.push(bit);
+  bit.el.addEventListener('mouseenter', ()=>bit.mouseEnter());
+  bit.el.addEventListener('mouseleave', ()=>bit.mouseLeave());
 
-  bit.el.addEventListener('mouseenter', ()=>{
-    bit.mouseIn = true;
-  })
-  bit.el.addEventListener('mouseleave', ()=>{
-    bit.mouseIn = false;
-    console.log('leave')
-  })
-
+  window.addEventListener('mousemove', (event)=>bit.move(event));
+  window.addEventListener('mouseup', (event)=>bit.clearHold(event));
+  window.addEventListener('mousedown', (event)=>bit.setHold(event));
+  
   game.obs.forEach((i)=>i.show());
 
   // ================= Main game loop =======================
