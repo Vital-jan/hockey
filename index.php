@@ -56,7 +56,7 @@ if (file_exists('game.json')) {
     <h1>Welcome to online AEROHOCKEY play area!</h1>
     <h2>Waiting to 2-nd player connect ...</h2>
     <h2>
-      <img src="loading.gif" alt="">
+      <img src="img/loading.gif" alt="">
     </h2>
   </div>
 </body>
@@ -80,6 +80,8 @@ class Obj {
     this.el; // DOM element
     this.fixed = fixed;
     this.transparency = transparency;
+    this.lastX = this.x; // previous state
+    this.lastY = this.y;
     this.create(parent, className).setSize(w, h, r); // создаем DOM элемент и уст. его размеры
   }
 
@@ -87,6 +89,7 @@ class Obj {
     this.el = document.createElement('div');
     parent.append (this.el);
     if (className) className.split(' ').forEach ((i)=>this.el.classList.add(i));
+    this.parent = parent;
     return this;
   }
   
@@ -113,6 +116,8 @@ class Obj {
       this.height = r * 2;
     }
     if (this.radius) this.el.style.borderRadius = '50%';
+    this.maxX = this.parent.getBoundingClientRect().width;
+    this.maxY = this.parent.getBoundingClientRect().height;
     return this;
   };
 
@@ -124,14 +129,32 @@ class Obj {
     return this;
   };
 
+  out () {
+    // проверка выхода биты за пределы поля:
+    if (this.x < 0) this.x = 0;
+    if (this.x + this.width > this.maxX) this.x = this.maxX - this.width;
+    if (this.y < 0) this.y = 0;
+    if (this.y + this.height > this.maxY) this.y = this.maxY - this.height;
+    return this;
+  }
+
   move () {
     if (this.fixed) return;
+    this.lastX = this.x;
+    this.lastY = this.y;
     this.x += this.dx;
     this.y += this.dy;
-    this.el.style.left = this.x + 'px';
-    this.el.style.top = this.y + 'px';
     return this;
   };
+
+  center () {
+    let x = this.x + this.width / 2;
+    let y = this.y + this.height / 2;
+    let lastX = this.lastX + this.width / 2;
+    let lastY = this.lastY + this.height / 2;
+    return {x, y, lastX, lastY};
+  }
+
 }
 
 class Game extends Obj{
@@ -152,7 +175,6 @@ class Game extends Obj{
     this.obs = []; // массив объектов игры
     this.x = 0;
     this.y = 0;
-    this.create(document.body, 'field').setSize(); // создаем DOM элемент и устанавливаем размеры игрового поля
   }
 
   setSize () {
@@ -189,20 +211,47 @@ class Bit extends Obj {
     this.mouseIn = false;
     this.correctX = 0;
     this.correctY = 0;
+    this.contact = false;
   }
 
   move (event) {
     event.stopPropagation();
     event.preventDefault();
-    if (!this.hold) return;
-    this.x = event.pageX + this.correctX;
+    if (!this.hold) return this; // если кнопка мыши не нажата - выход.
+    this.lastX = this.x;
+    this.lastY = this.y;
+    this.x = event.pageX + this.correctX; // коррекция координат если мышь нажата в пределах биты
     this.y = event.pageY + this.correctY;
-
-    if (this.x < 0) this.x = 0;
-    if (this.y < 0) this.y = 0;
-    this.el.style.left = this.x + 'px';
-    this.el.style.top = this.y + 'px';
+    return this;
   }
+
+  cross (obj) { // контакт биты с круглым объектом
+    if (this.contact) return false;
+    if (Math.hypot(obj.center().x - this.center().x, obj.center().y - this.center().y) > (this.radius + obj.radius)) this.contact = false; // окончание контакта мяча с битой
+
+    // сумма радиусов (мин. дистанция между битой и мячом):
+    let R = this.radius + obj.radius;
+  
+    // предыдущее расстояние от биты до мяча:
+    let H = Math.hypot(this.center().lastX - obj.center().x, this.center().lastY - obj.center().y);
+    
+    // путь биты за один игровой цикл:
+    let dist = Math.hypot(this.lastX - this.x, this.lastY - this.y);
+    // если путь биты меньше расстояния до мяча:
+    if (dist < (H - this.radius - obj.radius)) return false; // нет столкновения
+    // определяем минимальный угол касания биты с мячом:
+    let minA = Math.asin(R / H) * toDeg;
+    
+    let a1 = getAngle(this.lastX, this.lastY, obj.x, obj.y); // угол между отрезком, соединяющим биту с мячом и вертикалью, до начала движения
+    let a2 = getAngle(this.lastX, this.lastY, this.x, this.y); // угол движения биты по отношению к вертикали
+    let A = Math.abs(a2 - a1); // разница углов - угол движения биты по отн. к мячу
+    if (A >= minA) return false;
+    line(e,0,0,0,0)
+    this.contact = true;
+    console.log('contact')
+    return true;
+  }
+
   setHold (event) {
     event.stopPropagation();
     event.preventDefault();
@@ -212,7 +261,7 @@ class Bit extends Obj {
       this.correctY = this.y - event.pageY;
     }
   }
-  clearHold () {
+  clearHold (event) {
     event.stopPropagation();
     event.preventDefault();
     this.hold = false;
@@ -235,7 +284,9 @@ const startGame = (player)=>{
   console.log(`start game. Player${player}`)
   
   document.body.innerHTML = '';
-  let game = new Game;
+
+  let game = new Game(player);
+
   game.show();
   // создаем объекты:
   let gateWidth = Math.round(game.width / 3);
@@ -252,29 +303,36 @@ const startGame = (player)=>{
   obj = new Border ((game.width - gateWidth) / 2 - game.borderWidth, game.height - game.borderWidth, 0, 0, game.borderWidth, game.el, 'border');
   game.obs.push(obj);
 
-  let ballRadius = game.width * 0.03;
+  let ballRadius = Math.round(game.width * 0.03);
   let ball = new Ball (game.width / 2 - ballRadius, game.height / 2, ballRadius, ballRadius, ballRadius, game.el, 'ball');
   game.obs.push(ball);
 
-  let bitRadius = ballRadius * 1.1;
+  let bitRadius = Math.round(ballRadius * 2);
   let bit = new Bit (game.width / 2 - bitRadius, game.height - 3 * bitRadius, bitRadius, bitRadius, bitRadius, game.el, 'bit');
   game.obs.push(bit);
   bit.el.addEventListener('mouseenter', ()=>bit.mouseEnter());
   bit.el.addEventListener('mouseleave', ()=>bit.mouseLeave());
 
-  window.addEventListener('mousemove', (event)=>bit.move(event));
+  window.addEventListener('mousemove', (event)=>{
+    bit.move(event).out().cross(ball);
+    // bit.cross(ball);
+    bit.show();
+    if (Math.hypot(ball.x - bit.x, ball.y - bit.y) > (bit.radius + ball.radius)) bit.contact = false; // окончание контакта мяча с битой
+  });
   window.addEventListener('mouseup', (event)=>bit.clearHold(event));
   window.addEventListener('mousedown', (event)=>bit.setHold(event));
   
   game.obs.forEach((i)=>i.show());
 
-  // ================= Main game loop =======================
-  // temporarity for debug:
-    game.active = true;
-
+    // ================= Main game loop =======================
+    // temporarity for debug:
+      game.active = true;
+    
+    
   let gameIterval = setInterval(()=>{
     if (!game.active) return;
   }, game.gameInterval);
+
   // ==========  ball comeback waiting loop ===========
   let passInterval = setInterval (()=>{
     if (game.active) return;
