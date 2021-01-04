@@ -173,7 +173,7 @@ class Game extends Obj{
     this.waitTime = 0; // счетчик времени ожидания ответа сервера после отправки запроса
     this.sendRequest = false; // запрос был отправлен при выходе мяча за пределы поля
     this.obs = []; // массив объектов игры
-    this.x = 0;
+    this.x = 0;//????
     this.y = 0;
   }
 
@@ -227,13 +227,13 @@ class Bit extends Obj {
 
   cross (obj) { // контакт биты с круглым объектом
     if (this.contact) return false;
-    if (Math.hypot(obj.center().x - this.center().x, obj.center().y - this.center().y) > (this.radius + obj.radius)) this.contact = false; // окончание контакта мяча с битой
+    if (distance(obj.center().x, obj.center().y, this.center().x, this.center().y) > (this.radius + obj.radius)) this.contact = false; // окончание контакта мяча с битой
 
     // сумма радиусов (мин. дистанция между битой и мячом):
     let R = this.radius + obj.radius;
   
-    // предыдущее расстояние от биты до мяча:
-    let H = Math.hypot(this.center().lastX - obj.center().x, this.center().lastY - obj.center().y);
+    // расстояние от биты до мяча до начала перемещения биты:
+    let H = distance(this.center().lastX, this.center().lastY, obj.center().x, obj.center().y);
     
     // путь биты за один игровой цикл:
     let dist = Math.hypot(this.lastX - this.x, this.lastY - this.y);

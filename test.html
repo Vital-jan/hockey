@@ -11,7 +11,26 @@
 </body>
 <script src="calc.js"></script>
 <script>
+  a1=getAngle(0,5,5,0)
+  a2=getAngle(0,5,5,2)
 
+  A=Math.abs(a2-a1);
+  console.log(a1,a2,A)
+
+  R = 2;
+  H=distance(0,5,5,0);
+
+  let minA = Math.asin(R / H) * toDeg;
+  if (A<=minA) console.log('Cross')
+  a=1;
+  b=-2*H*Math.cos(A*toRad);
+  c=H*H-R*R;
+  console.log(discr(a,b,c))
+  console.log(quadro(a,b,c).x1)
+  // смещение от начальной точки до точки удара:
+  console.log(getX(quadro(a,b,c).x1, a2*toRad))
+  console.log(getY(quadro(a,b,c).x1, a2*toRad))
+/*
   const x0=50, y0=50;
   document.querySelector('div').style.left = x0-5+'px';
   document.querySelector('div').style.top = y0-5+'px';
@@ -25,6 +44,6 @@
     let a2 = getAngle(x0+100,y0+100,x0,y0);
     console.log(a-a2)
   })
-  
+  */
 </script>
 </html>
